@@ -2,33 +2,50 @@
 
 name: CI - Deploy AWS
 
-# Controls when the action will run. 
 on:
-  # Triggers the workflow on push or pull request events but only for the master branch
   push:
-    branches: [ master ]
+    branches:
+      - 'master'
 
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+env:
+  AWS_REGION: eu-central-1
+
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
+  terraform-apply:
+    name: Terraform apply
     runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
+    timeout-minutes: 15
+    env:
+      TF_VERSION: '0.14.7'
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
-
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
-
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
-        run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+      - name: Checkout Project
+        uses: actions/checkout@v2
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+          role-duration-seconds: 1200
+      - uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - name: Terraform init
+        run: >
+          terraform init
+          -backend-config=bucket=${{ secrets.TERRAFORM_BACKEND_S3_BUCKET }}
+          -backend-config=key=${{ secrets.TERRAFORM_BACKEND_S3_KEY }}
+          -backend-config=dynamodb_table=${{ secrets.TERRAFORM_BACKEND_DYNAMO_DB }}
+          -backend-config=profile=${{ secrets.TERRAFORM_AWS_PROFILE }}
+          -input=false
+        working-directory: terraform
+      - name: Terraform plan
+        run: >
+          terraform plan -out=.terraform.dev.plan.tfout
+          -var region=${{ env.AWS_REGION }}
+        working-directory: terraform
+      - name: Terraform apply
+        run: terraform apply .terraform.dev.plan.tfout
+        working-directory: terraform
