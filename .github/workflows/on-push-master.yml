@@ -1,20 +1,18 @@
 # This is a basic workflow to help you get started with Actions
 
-name: CI - Deploy AWS
+name: CI - Test infrastructure
 
 on:
   push:
     branches:
       - 'master'
 
-  workflow_dispatch:
-
 env:
   AWS_REGION: eu-central-1
 
 jobs:
-  terraform-apply:
-    name: Terraform apply
+  terraform-plan:
+    name: Terraform plan
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -45,7 +43,4 @@ jobs:
         run: >
           terraform plan -out=.terraform.dev.plan.tfout
           -var region=${{ env.AWS_REGION }}
-        working-directory: terraform
-      - name: Terraform apply
-        run: terraform apply .terraform.dev.plan.tfout
         working-directory: terraform
