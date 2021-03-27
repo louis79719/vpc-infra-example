@@ -15,7 +15,7 @@ env:
 
 jobs:
   terraform-apply:
-    name: Terraform apply
+    name: Terraform destroy
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -45,5 +45,6 @@ jobs:
       - name: Terraform destroy
         run: >
           terraform destroy
+          -auto-approve
           -var region=${{ github.event.inputs.region }}
         working-directory: terraform
